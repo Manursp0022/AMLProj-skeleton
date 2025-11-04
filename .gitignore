@@ -172,3 +172,29 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Dataset (troppo grande per GitHub)
+dataset/*
+!dataset/.gitkeep
+tiny-imagenet/
+tiny-imagenet-200/
+*.zip
+*.tar.gz
+
+# Checkpoints (modelli salvati)
+checkpoints/*
+!checkpoints/.gitkeep
+*.pth
+*.pt
+*.ckpt
+
+# Wandb logs
+wandb/
+*.wandb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
