@@ -8,15 +8,20 @@ from tqdm import tqdm
 def create_yolo_labels(dataset_root, folder_id='02'):
     """
     Genera i file .txt per YOLO partendo dal gt.yml di LINEMOD.
+    MODIFICA: Salva i txt direttamente nella cartella 'rgb' per evitare errori di path.
     """
-    labels_dir = os.path.join(dataset_root, 'data', folder_id, 'labels')
+    # --- MODIFICA IMPORTANTE QUI SOTTO ---
+    # Invece di creare una cartella 'labels' separata, mettiamo i file txt 
+    # nella stessa cartella delle immagini ('rgb'). YOLO li troverà sicuramente.
+    labels_dir = os.path.join(dataset_root, 'data', folder_id, 'rgb')
     images_dir = os.path.join(dataset_root, 'data', folder_id, 'rgb')
     yaml_path = os.path.join(dataset_root, 'data', folder_id, 'gt.yml')
 
-    os.makedirs(labels_dir, exist_ok=True)
+    # Non serve os.makedirs perché la cartella rgb esiste già
 
-    # Controllo rapido
-    if len(os.listdir(labels_dir)) > 100:
+    # Controllo rapido: contiamo i file .txt nella cartella rgb
+    txt_files = glob.glob(os.path.join(labels_dir, "*.txt"))
+    if len(txt_files) > 100:
         print(f"[INFO] Labels già presenti in {labels_dir}. Salto generazione.")
     else:
         print(f"[INFO] Generazione labels YOLO da {yaml_path}...")
@@ -40,11 +45,7 @@ def create_yolo_labels(dataset_root, folder_id='02'):
             
             if not os.path.exists(img_path): continue
             
-            # Ottimizzazione: Leggiamo dimensioni solo se necessario
-            # Assumiamo 640x480 standard Linemod per velocità, 
-            # se variano decommenta cv2.imread
-            # img = cv2.imread(img_path)
-            # h, w = img.shape[:2]
+            # Ottimizzazione: Assumiamo 640x480 standard Linemod
             w_img, h_img = 640, 480 
 
             yolo_lines = []
@@ -72,7 +73,7 @@ def create_yolo_labels(dataset_root, folder_id='02'):
                 with open(txt_path, 'w') as f_out:
                     f_out.write("\n".join(yolo_lines))
                     count += 1
-        print(f"[INFO] Label generate.")
+        print(f"[INFO] Label generate in {labels_dir}.")
 
 def create_yolo_config(dataset_root, folder_id='02', train_size=1000):
     """
@@ -82,10 +83,9 @@ def create_yolo_config(dataset_root, folder_id='02', train_size=1000):
     images_dir = os.path.join(dataset_root, 'data', folder_id, 'rgb')
     
     # 1. Troviamo tutte le immagini .png
-    # Usiamo glob per trovare i file reali
     search_path = os.path.join(images_dir, "*.png")
     all_images = glob.glob(search_path)
-    all_images = sorted(all_images) # Ordiniamo prima per riproducibilità
+    all_images = sorted(all_images)
     
     total_imgs = len(all_images)
     print(f"[INFO] Trovate {total_imgs} immagini in {folder_id}.")
@@ -93,20 +93,18 @@ def create_yolo_config(dataset_root, folder_id='02', train_size=1000):
     if total_imgs == 0:
         raise ValueError("Nessuna immagine trovata! Controlla il path.")
 
-    # 2. Mischiamo e dividiamo (Shuffle & Split)
-    random.seed(42) # FONDAMENTALE: il seed deve essere fisso così lo split è sempre uguale
+    # 2. Mischiamo e dividiamo
+    random.seed(42)
     random.shuffle(all_images)
     
-    # Se abbiamo abbastanza immagini, usiamo il numero fisso, altrimenti percentuale
     limit = train_size if total_imgs > train_size else int(total_imgs * 0.8)
     
-    train_imgs = all_images[:limit]      # Primi 1000
-    val_imgs = all_images[limit:]        # Restanti 213
+    train_imgs = all_images[:limit]
+    val_imgs = all_images[limit:]
     
     print(f"[INFO] Split creato: {len(train_imgs)} Train, {len(val_imgs)} Validation.")
 
-    # 3. Salviamo le liste in due file .txt dentro la cartella del dataset
-    # YOLO vuole i path assoluti scritti riga per riga
+    # 3. Salviamo le liste in due file .txt
     train_list_path = os.path.join(dataset_root, 'autosplit_train.txt')
     val_list_path = os.path.join(dataset_root, 'autosplit_val.txt')
     
@@ -116,11 +114,11 @@ def create_yolo_config(dataset_root, folder_id='02', train_size=1000):
     with open(val_list_path, 'w') as f:
         f.write('\n'.join(val_imgs))
         
-    # 4. Creiamo il config yaml puntando ai file .txt
+    # 4. Creiamo il config yaml
     config = {
         'path': dataset_root, 
-        'train': train_list_path,  # <--- Ora punta al file .txt!
-        'val': val_list_path,      # <--- Ora punta al file .txt!
+        'train': train_list_path,
+        'val': val_list_path,
         'names': {
             0: 'Ape', 1: 'Morsa', 2: 'Cam', 3: 'Lattina', 4: 'Gatto', 
             5: 'Trapano', 6: 'Papera', 7: 'Uova', 8: 'Colla', 
