@@ -185,7 +185,6 @@ tiny-imagenet-200/
 checkpoints/*
 !checkpoints/.gitkeep
 *.pth
-*.pt
 *.ckpt
 
 # Wandb logs
